@@ -29,8 +29,8 @@ void setup() {
 }
 
 // Command init
-int len = 10;
-char cmd[10] = {'0', '0', '1', '0', '0', '0', '1', '0', '0', '0'};
+int len = 12;
+char cmd[12] = {'0', '0','0','0' '1', '0', '0', '0', '1', '0', '0', '0'};
 
 // Speed of the wheel
 int leftSpeed = 0;
@@ -65,10 +65,10 @@ void loop() {
 	if (cmd[0] == 'D' && cmd[1] == 'K') {
 
 		// calculate wheel speed
-		leftSpeed = charToInt(cmd[3]) * 100 + charToInt(cmd[4]) * 10 + charToInt(cmd[5]);
-		rightSpeed = charToInt(cmd[7]) * 100 + charToInt(cmd[8]) * 10 + charToInt(cmd[9]);
+		leftSpeed = charToInt(cmd[5]) * 100 + charToInt(cmd[6]) * 10 + charToInt(cmd[7]);
+		rightSpeed = charToInt(cmd[9]) * 100 + charToInt(cmd[10]) * 10 + charToInt(cmd[11]);
 		
-		switch (cmd[2]) {
+		switch (cmd[4]) {
 			// Backward
 			case '0':
 				analogWrite(FWD_L_PWM, 0);
@@ -86,7 +86,7 @@ void loop() {
 				break;
 		}
 
-		switch (cmd[6]) {
+		switch (cmd[8]) {
 			// Backward
 			case '0':
 				analogWrite(FWD_R_PWM, 0);
