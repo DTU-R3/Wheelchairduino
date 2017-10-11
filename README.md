@@ -7,11 +7,13 @@ Arduino-based wheelchair controller
 
 	First and second digits: header of the command
 	
-	Third digit: Turning direction of the left wheel, 0-backward, 1-stop, 2-forward
+	Third and Fourth digits were originally designed for brake and ultrosound, not used any more
 	
-	Fourth to Sixth digits: Turning speed of the left wheel, maximum 255.
+	Fifth digit: Turning direction of the left wheel, 0-backward, 1-stop, 2-forward
 	
-	Seventh digit: Turning direction of the right wheel, 0-backward, 1-stop, 2-forward
+	Sixth to Eighth digits: Turning speed of the left wheel, maximum 255.
 	
-	Eighth to Tenth digits: Turning speed of the right wheel, maximum 255.
+	Nineth digit: Turning direction of the right wheel, 0-backward, 1-stop, 2-forward
+	
+	Tenth to Twelfth digits: Turning speed of the right wheel, maximum 255.
 	
