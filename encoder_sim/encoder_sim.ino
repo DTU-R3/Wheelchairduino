@@ -2,26 +2,31 @@
 
 Encoder knobLeft(3, 7);
 Encoder knobRight(19, 22);
-long leftTicks = 0;
-long rightTicks = 0;
-
+String incomingByte = "";
+long int leftcount = 0, rightcount = 0;
+char cmd[2] = {'0','0'};
 void setup() {
   Serial.begin(9600);
 }
 
-char cmd[2] = {'0', '0'};
 void loop() {
   // put your main code here, to run repeatedly:
   if (Serial.available() > 0) {
-    int incomingByte = Serial.read();
-    long newLeft, newRight;
-    newLeft = knobLeft.read();
-    newRight = knobRight.read();
-    if (newLeft != leftTicks || newRight != rightTicks) {
-      leftTicks = newLeft;
-      rightTicks = newRight;
+    Serial.readBytes(cmd,2);
+    if ((cmd[0]=='d')&&(cmd[1]==';')) {
+      long int newLeft, newRight;
+      newLeft = knobLeft.read();
+      newRight = knobRight.read();
+      newLeft = -newLeft/2;  // Factor to be changed
+      newRight = newRight/2;
+      Serial.println("wc:"+String(newLeft - leftcount)+","+String(newRight - rightcount)+";");
+      leftcount = newLeft;
+      rightcount = newRight;
+      Serial.flush();
     }
-    Serial.println("wc:"+String(leftTicks)+","+String(rightTicks)+";");
+    else {
+      Serial.flush();
+    }
   }
   else {
     Serial.flush();
