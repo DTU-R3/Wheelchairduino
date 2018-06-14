@@ -19,7 +19,11 @@ void loop() {
       newRight = knobRight.read();
       newLeft = -newLeft/2;  // Factor to be changed
       newRight = newRight/2;
-      Serial.println("wc:"+String(newLeft - leftcount)+","+String(newRight - rightcount)+";");
+      // Print only if it does not overflow
+      if (((newLeft-leftcount) < 10000000) && ((newRight - rightcount) < 10000000))
+      {
+        Serial.println("wc:"+String(newLeft - leftcount)+","+String(newRight - rightcount)+";");
+      }
       leftcount = newLeft;
       rightcount = newRight;
       Serial.flush();
