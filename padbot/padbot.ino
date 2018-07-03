@@ -1,12 +1,12 @@
-#define L_FWD 0
-#define L_BACK 1
-#define L_SENSE 2
-#define L_EN 3
+#define L_FWD 20
+#define L_BACK 19
+#define L_SENSE 18
+#define L_EN 23
 
-#define R_FWD 5
-#define R_BACK 6
-#define R_SENSE 7
-#define R_EN 4
+#define R_FWD 17
+#define R_BACK 16
+#define R_SENSE 15
+#define R_EN 22
 
 #define FREQ 25000
 
@@ -37,32 +37,11 @@ void setup() {
 	delay(1000);
 }
 
-// Speed of the wheel
-int leftSpeed = 0;
-int rightSpeed = 0;
-long int leftCount = 0;
-long int rightCount = 0;
-int lastL = LOW;
-int lastR = LOW;
-
-
 void loop() {
 	digitalWrite(L_FWD, HIGH);
   digitalWrite(L_BACK, LOW);
-  analogWrite(L_EN, 255);
+  analogWrite(L_EN, 200);
   digitalWrite(R_FWD, HIGH);
   digitalWrite(R_BACK, LOW);
-  analogWrite(R_EN, 255);
-  int l_read = digitalRead(L_SENSE);
-  int r_read = digitalRead(R_SENSE);
-  if (lastL != l_read) {
-    leftCount++;
-  }
-  if (lastR != r_read) {
-    rightCount++;
-  }
-  lastL = l_read;
-  lastR = r_read;
-  
-  Serial.println(String(leftCount) + "," + String(rightCount));
+  analogWrite(R_EN, 200);
 }
