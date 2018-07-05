@@ -5,21 +5,19 @@
 #include <std_msgs/Int32.h>
 
 // Pins
-#define L_FWD 20
-#define L_BACK 19
-#define L_SENSE 18
-#define L_EN 23
-
-#define R_FWD 17
-#define R_BACK 16
-#define R_SENSE 15
-#define R_EN 22
+#define L_FWD 3
+#define L_BACK 4
+#define R_FWD 6
+#define R_BACK 5
+#define L_SENSE 7
+#define R_SENSE 8
 
 #define FREQ 25000
 
 // Robot parameter
-#define WHEELBASE 0.48
-#define METERPERCOUNT 0.003
+#define WHEELBASE 0.23
+#define METERPERCOUNT 0.03
+#define MAXSPEED (200.0-minpower)/k
 
 // Variables
 ros::NodeHandle  nh;
@@ -27,11 +25,16 @@ float leftSpeed = 0;
 float rightSpeed = 0;
 int leftCmd = 0;
 int rightCmd = 0;
-int minpower = 30;
+int minpower = 60;
 float Eb = 1.00;
 float Eb2 = 1.00;
 float k = 50.0;
-float max_speed = 1.0;
+int leftCount = 0;
+int rightCount = 0;
+int leftDir = 0;
+int rightDir = 0;
+int lastLeft = LOW;
+int lastRight = LOW;
 
 // 'cmd_vel' callback function
 void velCB( const geometry_msgs::Twist& vel) {
@@ -39,11 +42,11 @@ void velCB( const geometry_msgs::Twist& vel) {
   float ang_vel = vel.angular.z;
 
   // Handle speed limit
-  if ((lin_vel>0)&&((lin_vel+abs(ang_vel)*WHEELBASE*0.5)>max_speed)) {
-    lin_vel = max_speed - abs(ang_vel)*WHEELBASE*0.5;
+  if ((lin_vel>0)&&((lin_vel+abs(ang_vel)*WHEELBASE*0.5)>MAXSPEED)) {
+    lin_vel = MAXSPEED - abs(ang_vel)*WHEELBASE*0.5;
   }
-  else if ((lin_vel<0)&&((-lin_vel+abs(ang_vel)*WHEELBASE*0.5)>max_speed)) {
-    lin_vel = -max_speed + abs(ang_vel)*WHEELBASE*0.5;
+  else if ((lin_vel<0)&&((-lin_vel+abs(ang_vel)*WHEELBASE*0.5)>MAXSPEED)) {
+    lin_vel = -MAXSPEED + abs(ang_vel)*WHEELBASE*0.5;
   }
   
   // Calculate the velocity for each wheel
@@ -54,37 +57,41 @@ void velCB( const geometry_msgs::Twist& vel) {
   // Map the velocity to motor signal
   if (leftSpeed > 0) {
     leftCmd = (int) (Eb * ((leftSpeed * k) + minpower));
-    digitalWrite(L_FWD, HIGH);
-    digitalWrite(L_BACK, LOW);
+    leftDir = 1;
+    analogWrite(L_FWD, abs(leftCmd));
+    analogWrite(L_BACK, 0);
   }
   else if(leftSpeed < 0) {
     leftCmd = (int) (Eb2 * ((leftSpeed * k) - minpower));
-    digitalWrite(L_FWD, LOW);
-    digitalWrite(L_BACK, HIGH);
+    leftDir = -1;
+    analogWrite(L_FWD, 0);
+    analogWrite(L_BACK, abs(leftCmd));
   }
   else {
     leftCmd = 0;
-    digitalWrite(L_FWD, LOW);
-    digitalWrite(L_BACK, LOW);
+    leftDir = 0;
+    analogWrite(L_FWD, 0);
+    analogWrite(L_BACK, 0);
   }
   
   if (rightSpeed > 0) {
     rightCmd = (int) ((rightSpeed * k) + minpower);
-    digitalWrite(R_FWD, HIGH);
-    digitalWrite(R_BACK, LOW);
+    rightDir = 1;
+    analogWrite(R_FWD, abs(rightCmd));
+    analogWrite(R_BACK, 0);
   }
   else if (rightSpeed < 0) {
     rightCmd = (int) ((rightSpeed * k) - minpower);
-    digitalWrite(R_FWD, LOW);
-    digitalWrite(R_BACK, HIGH);
+    rightDir = -1;
+    analogWrite(R_FWD, 0);
+    analogWrite(R_BACK, abs(rightCmd));
   }
   else {
     rightCmd = 0;
-    digitalWrite(R_FWD, LOW);
-    digitalWrite(R_BACK, LOW);
+    rightDir = 0;
+    analogWrite(R_FWD, 0);
+    analogWrite(R_BACK, 0);
   }
-  analogWrite(L_EN, leftCmd);
-  analogWrite(R_EN, rightCmd);
 }
 
 // 'k_vel' callback function
@@ -96,48 +103,54 @@ void kCB( const std_msgs::Float32& f) {
 void minCB( const std_msgs::Int32& i) {
   minpower = i.data;
 }
-
-// 'k_vel' callback function
-void speedCB( const std_msgs::Float32& f) {
-  max_speed = f.data;
-}
-
-
+std_msgs::Int32 left_count;
+std_msgs::Int32 right_count;
+ros::Publisher leftPub("left_count", &left_count);
+ros::Publisher rightPub("right_count", &right_count);
 ros::Subscriber<geometry_msgs::Twist> velSub("cmd_vel", &velCB );
 ros::Subscriber<std_msgs::Float32> kSub("k_vel", &kCB );
 ros::Subscriber<std_msgs::Int32> minSub("min_power", &minCB );
-ros::Subscriber<std_msgs::Float32> speedSub("max_speed", &speedCB );
 
 void setup() {
 	// Config
-	pinMode(L_FWD, OUTPUT);
-	pinMode(L_BACK, OUTPUT);
-	pinMode(L_SENSE, INPUT);
-	pinMode(L_EN, OUTPUT);
+  pinMode(L_FWD, OUTPUT);
+  pinMode(L_BACK, OUTPUT);
+  pinMode(L_SENSE, INPUT);
   pinMode(R_FWD, OUTPUT);
   pinMode(R_BACK, OUTPUT);
   pinMode(R_SENSE, INPUT);
-  pinMode(R_EN, OUTPUT);
-  analogWriteFrequency(L_EN, FREQ);
-  analogWriteFrequency(R_EN, FREQ);
-	delay(1000);
+  analogWriteFrequency(L_FWD, FREQ);
+  analogWriteFrequency(L_BACK, FREQ);
+  analogWriteFrequency(R_FWD, FREQ);
+  analogWriteFrequency(R_BACK, FREQ);
+  delay(1000);
 	
 	// Init all pins
-	digitalWrite(L_FWD, LOW);
-	digitalWrite(L_BACK, LOW);
-	analogWrite(L_EN, 0);
-  digitalWrite(R_FWD, LOW);
-  digitalWrite(R_BACK, LOW);
-  analogWrite(R_EN, 0);
+	analogWrite(L_FWD, 0);
+	analogWrite(L_BACK, 0);
+	analogWrite(R_FWD, 0);
+	analogWrite(R_BACK, 0);
 	delay(1000);
   nh.initNode();
+  nh.advertise(leftPub);
+  nh.advertise(rightPub);
   nh.subscribe(velSub);
   nh.subscribe(kSub);
   nh.subscribe(minSub);
-  nh.subscribe(speedSub);
 }
 
 void loop() {
+  int currentLeft = digitalRead(L_SENSE);
+  int currentRight = digitalRead(R_SENSE);
+  if (currentLeft != lastLeft) {
+    leftCount += leftDir;
+  }
+  if (currentRight != lastRight) {
+    rightCount += rightDir;
+  }  
+  left_count.data = leftCount;
+  leftPub.publish(&left_count );
+  right_count.data = rightCount;
+  rightPub.publish(&right_count );
   nh.spinOnce();
-  delay(1);
 }
