@@ -33,8 +33,6 @@ int leftCount = 0;
 int rightCount = 0;
 int leftDir = 0;
 int rightDir = 0;
-int lastLeft = LOW;
-int lastRight = LOW;
 
 // 'cmd_vel' callback function
 void velCB( const geometry_msgs::Twist& vel) {
@@ -115,10 +113,12 @@ void setup() {
 	// Config
   pinMode(L_FWD, OUTPUT);
   pinMode(L_BACK, OUTPUT);
-  pinMode(L_SENSE, INPUT);
   pinMode(R_FWD, OUTPUT);
   pinMode(R_BACK, OUTPUT);
-  pinMode(R_SENSE, INPUT);
+  pinMode(L_SENSE, INPUT_PULLUP); 
+  attachInterrupt(digitalPinToInterrupt(L_SENSE), L_Encoder, CHANGE); 
+  pinMode(R_SENSE, INPUT_PULLUP); 
+  attachInterrupt(digitalPinToInterrupt(R_SENSE), R_Encoder, CHANGE); 
   analogWriteFrequency(L_FWD, FREQ);
   analogWriteFrequency(L_BACK, FREQ);
   analogWriteFrequency(R_FWD, FREQ);
@@ -139,18 +139,19 @@ void setup() {
   nh.subscribe(minSub);
 }
 
+void L_Encoder() { 
+  leftCount += leftDir; 
+} 
+ 
+void R_Encoder() { 
+  rightCount += rightDir; 
+} 
+
 void loop() {
-  int currentLeft = digitalRead(L_SENSE);
-  int currentRight = digitalRead(R_SENSE);
-  if (currentLeft != lastLeft) {
-    leftCount += leftDir;
-  }
-  if (currentRight != lastRight) {
-    rightCount += rightDir;
-  }  
   left_count.data = leftCount;
   leftPub.publish(&left_count );
   right_count.data = rightCount;
   rightPub.publish(&right_count );
   nh.spinOnce();
+  delay(100);
 }
