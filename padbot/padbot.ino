@@ -15,9 +15,13 @@
 #define FREQ 25000
 
 // Robot parameter
-#define WHEELBASE 0.23
-#define METERPERCOUNT 0.03
-#define MAXSPEED (200.0-minpower)/k
+#define WHEELBASE 0.228
+#define METERPERCOUNT 0.0000439
+#define SPEEDTOCMD 543.48
+#define MIN_POWER 11
+#define FWD_EB 1.05
+#define BACK_EB 1.065
+#define MAXSPEED (200.0-MIN_POWER)/SPEEDTOCMD
 
 // Variables
 ros::NodeHandle  nh;
@@ -26,9 +30,6 @@ float rightSpeed = 0;
 int leftCmd = 0;
 int rightCmd = 0;
 int minpower = 60;
-float Eb = 1.00;
-float Eb2 = 1.00;
-float k = 50.0;
 int leftCount = 0;
 int rightCount = 0;
 int leftDir = 0;
@@ -54,13 +55,13 @@ void velCB( const geometry_msgs::Twist& vel) {
     
   // Map the velocity to motor signal
   if (leftSpeed > 0) {
-    leftCmd = (int) (Eb * ((leftSpeed * k) + minpower));
+    leftCmd = (int) (FWD_EB * ((leftSpeed * SPEEDTOCMD) + MIN_POWER));
     leftDir = 1;
     analogWrite(L_FWD, abs(leftCmd));
     analogWrite(L_BACK, 0);
   }
   else if(leftSpeed < 0) {
-    leftCmd = (int) (Eb2 * ((leftSpeed * k) - minpower));
+    leftCmd = (int) (BACK_EB * ((leftSpeed * SPEEDTOCMD) - MIN_POWER));
     leftDir = -1;
     analogWrite(L_FWD, 0);
     analogWrite(L_BACK, abs(leftCmd));
@@ -73,13 +74,13 @@ void velCB( const geometry_msgs::Twist& vel) {
   }
   
   if (rightSpeed > 0) {
-    rightCmd = (int) ((rightSpeed * k) + minpower);
+    rightCmd = (int) ((rightSpeed * SPEEDTOCMD) + MIN_POWER);
     rightDir = 1;
     analogWrite(R_FWD, abs(rightCmd));
     analogWrite(R_BACK, 0);
   }
   else if (rightSpeed < 0) {
-    rightCmd = (int) ((rightSpeed * k) - minpower);
+    rightCmd = (int) ((rightSpeed * SPEEDTOCMD) - MIN_POWER);
     rightDir = -1;
     analogWrite(R_FWD, 0);
     analogWrite(R_BACK, abs(rightCmd));
@@ -92,22 +93,11 @@ void velCB( const geometry_msgs::Twist& vel) {
   }
 }
 
-// 'k_vel' callback function
-void kCB( const std_msgs::Float32& f) {
-  k = f.data;
-}
-
-// 'minpower' callback function
-void minCB( const std_msgs::Int32& i) {
-  minpower = i.data;
-}
 std_msgs::Int32 left_count;
 std_msgs::Int32 right_count;
-ros::Publisher leftPub("left_count", &left_count);
-ros::Publisher rightPub("right_count", &right_count);
+ros::Publisher leftPub("padbot/left_count", &left_count);
+ros::Publisher rightPub("padbot/right_count", &right_count);
 ros::Subscriber<geometry_msgs::Twist> velSub("cmd_vel", &velCB );
-ros::Subscriber<std_msgs::Float32> kSub("k_vel", &kCB );
-ros::Subscriber<std_msgs::Int32> minSub("min_power", &minCB );
 
 void setup() {
 	// Config
@@ -135,8 +125,6 @@ void setup() {
   nh.advertise(leftPub);
   nh.advertise(rightPub);
   nh.subscribe(velSub);
-  nh.subscribe(kSub);
-  nh.subscribe(minSub);
 }
 
 void L_Encoder() { 
