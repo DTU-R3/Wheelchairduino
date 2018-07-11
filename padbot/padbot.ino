@@ -3,6 +3,7 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Bool.h>
 
 // Pins
 #define L_FWD 3
@@ -93,11 +94,19 @@ void velCB( const geometry_msgs::Twist& vel) {
   }
 }
 
+void resetCB( const std_msgs::Bool& b) {
+  if (b.data) {
+    leftCount = 0;
+    rightCount = 0;
+  }
+}
+
 std_msgs::Int32 left_count;
 std_msgs::Int32 right_count;
 ros::Publisher leftPub("padbot/left_count", &left_count);
 ros::Publisher rightPub("padbot/right_count", &right_count);
 ros::Subscriber<geometry_msgs::Twist> velSub("cmd_vel", &velCB );
+ros::Subscriber<std_msgs::Bool> resetSub("padbot/reset_encoder", &resetCB );
 
 void setup() {
 	// Config
@@ -125,6 +134,7 @@ void setup() {
   nh.advertise(leftPub);
   nh.advertise(rightPub);
   nh.subscribe(velSub);
+  nh.subscribe(resetSub);
 }
 
 void L_Encoder() { 
