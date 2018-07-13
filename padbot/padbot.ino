@@ -23,6 +23,7 @@
 #define FWD_EB 1.05
 #define BACK_EB 1.065
 #define MAXSPEED (200.0-MIN_POWER)/SPEEDTOCMD
+#define TIMEOUT 5000  // in ms
 
 // Variables
 ros::NodeHandle  nh;
@@ -35,9 +36,11 @@ int leftCount = 0;
 int rightCount = 0;
 int leftDir = 0;
 int rightDir = 0;
+unsigned long vel_received = 0;
 
 // 'cmd_vel' callback function
 void velCB( const geometry_msgs::Twist& vel) {
+  vel_received = millis();
   float lin_vel = vel.linear.x;
   float ang_vel = vel.angular.z;
 
@@ -151,5 +154,13 @@ void loop() {
   right_count.data = rightCount;
   rightPub.publish(&right_count );
   nh.spinOnce();
+  if ( millis() - vel_received > TIMEOUT ) {
+    analogWrite(L_FWD, 0);
+    analogWrite(L_BACK, 0);
+    analogWrite(R_FWD, 0);
+    analogWrite(R_BACK, 0);
+    leftDir = 0;
+    rightDir = 0;
+  }
   delay(100);
 }
