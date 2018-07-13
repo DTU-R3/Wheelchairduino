@@ -25,18 +25,51 @@
 #define MAXSPEED (200.0-MIN_POWER)/SPEEDTOCMD
 #define TIMEOUT 5000  // in ms
 
+// Control parameter
+#define KP 0.3
+
 // Variables
 ros::NodeHandle  nh;
 float leftSpeed = 0;
 float rightSpeed = 0;
-int leftCmd = 0;
-int rightCmd = 0;
+float currentLeftSpeed = 0;
+float currentRightSpeed = 0;
+float cmdLeftSpeed = 0;
+float cmdRightSpeed = 0;
 int minpower = 60;
 int leftCount = 0;
 int rightCount = 0;
+int lastLeftCount = 0;
+int lastRightCount = 0;
 int leftDir = 0;
 int rightDir = 0;
 unsigned long vel_received = 0;
+unsigned long encoder_published = 0;
+
+// Control Function
+int WheelControl(float spd, int fwd_pin, int back_pin, float fwd_Eb, float back_Eb) {
+  int dir = 0;
+  int cmd = 0;
+  if (spd > 0.05) { 
+    cmd = (int) (fwd_Eb * ((spd * SPEEDTOCMD) + MIN_POWER)); 
+    dir = 1; 
+    analogWrite(fwd_pin, min(abs(cmd),200)); 
+    analogWrite(back_pin, 0); 
+  } 
+  else if(spd < 0.05) { 
+    cmd = (int) (back_Eb * ((spd * SPEEDTOCMD) - MIN_POWER)); 
+    dir = -1; 
+    analogWrite(fwd_pin, 0); 
+    analogWrite(back_pin, min(abs(cmd),200)); 
+  } 
+  else { 
+    cmd = 0; 
+    dir = 0; 
+    analogWrite(fwd_pin, 0); 
+    analogWrite(back_pin, 0); 
+  } 
+  return dir;
+}
 
 // 'cmd_vel' callback function
 void velCB( const geometry_msgs::Twist& vel) {
@@ -55,52 +88,19 @@ void velCB( const geometry_msgs::Twist& vel) {
   // Calculate the velocity for each wheel
   leftSpeed = lin_vel - ang_vel * 0.5 * WHEELBASE;
   rightSpeed = lin_vel + ang_vel * 0.5 * WHEELBASE;
+  cmdLeftSpeed = leftSpeed;
+  cmdRightSpeed = rightSpeed;
 
-    
-  // Map the velocity to motor signal
-  if (leftSpeed > 0) {
-    leftCmd = (int) (FWD_EB * ((leftSpeed * SPEEDTOCMD) + MIN_POWER));
-    leftDir = 1;
-    analogWrite(L_FWD, abs(leftCmd));
-    analogWrite(L_BACK, 0);
-  }
-  else if(leftSpeed < 0) {
-    leftCmd = (int) (BACK_EB * ((leftSpeed * SPEEDTOCMD) - MIN_POWER));
-    leftDir = -1;
-    analogWrite(L_FWD, 0);
-    analogWrite(L_BACK, abs(leftCmd));
-  }
-  else {
-    leftCmd = 0;
-    leftDir = 0;
-    analogWrite(L_FWD, 0);
-    analogWrite(L_BACK, 0);
-  }
-  
-  if (rightSpeed > 0) {
-    rightCmd = (int) ((rightSpeed * SPEEDTOCMD) + MIN_POWER);
-    rightDir = 1;
-    analogWrite(R_FWD, abs(rightCmd));
-    analogWrite(R_BACK, 0);
-  }
-  else if (rightSpeed < 0) {
-    rightCmd = (int) ((rightSpeed * SPEEDTOCMD) - MIN_POWER);
-    rightDir = -1;
-    analogWrite(R_FWD, 0);
-    analogWrite(R_BACK, abs(rightCmd));
-  }
-  else {
-    rightCmd = 0;
-    rightDir = 0;
-    analogWrite(R_FWD, 0);
-    analogWrite(R_BACK, 0);
-  }
+  leftDir = WheelControl(cmdLeftSpeed, L_FWD, L_BACK, FWD_EB, BACK_EB);  
+  rightDir = WheelControl(cmdRightSpeed, R_FWD, R_BACK, 1.00, 1.00); 
 }
 
 void resetCB( const std_msgs::Bool& b) {
   if (b.data) {
     leftCount = 0;
     rightCount = 0;
+    lastLeftCount = 0;
+    lastRightCount = 0;
   }
 }
 
@@ -108,6 +108,10 @@ std_msgs::Int32 left_count;
 std_msgs::Int32 right_count;
 ros::Publisher leftPub("padbot/left_count", &left_count);
 ros::Publisher rightPub("padbot/right_count", &right_count);
+std_msgs::Float32 left_speed;
+std_msgs::Float32 right_speed;
+ros::Publisher leftSpdPub("padbot/left_speed", &left_speed);
+ros::Publisher rightSpdPub("padbot/right_speed", &right_speed);
 ros::Subscriber<geometry_msgs::Twist> velSub("cmd_vel", &velCB );
 ros::Subscriber<std_msgs::Bool> resetSub("padbot/reset_encoder", &resetCB );
 
@@ -136,6 +140,8 @@ void setup() {
   nh.initNode();
   nh.advertise(leftPub);
   nh.advertise(rightPub);
+  nh.advertise(leftSpdPub);
+  nh.advertise(rightSpdPub);
   nh.subscribe(velSub);
   nh.subscribe(resetSub);
 }
@@ -153,7 +159,27 @@ void loop() {
   leftPub.publish(&left_count );
   right_count.data = rightCount;
   rightPub.publish(&right_count );
-  nh.spinOnce();
+  int deltaMS = millis() - encoder_published;
+  encoder_published = millis();
+  int deltaLeftCount = leftCount - lastLeftCount;
+  int deltaRightCount = rightCount - lastRightCount;
+  lastLeftCount = leftCount;
+  lastRightCount = rightCount;
+
+  // Feedback Control
+  currentLeftSpeed = deltaLeftCount * METERPERCOUNT * 1000 / deltaMS;
+  currentRightSpeed = deltaRightCount * METERPERCOUNT * 1000 / deltaMS;
+  left_speed.data = currentLeftSpeed;
+  leftSpdPub.publish(&left_speed );
+  right_speed.data = currentRightSpeed;
+  rightSpdPub.publish(&right_speed );
+  cmdLeftSpeed += KP * (leftSpeed - currentLeftSpeed);
+  cmdRightSpeed += KP * (rightSpeed - currentRightSpeed);
+  leftDir = WheelControl(cmdLeftSpeed, L_FWD, L_BACK, FWD_EB, BACK_EB);  
+  rightDir = WheelControl(cmdRightSpeed, R_FWD, R_BACK, 1.00, 1.00);
+  
+  
+  // If timeout, stop the robot
   if ( millis() - vel_received > TIMEOUT ) {
     analogWrite(L_FWD, 0);
     analogWrite(L_BACK, 0);
@@ -162,5 +188,7 @@ void loop() {
     leftDir = 0;
     rightDir = 0;
   }
+  
   delay(100);
+  nh.spinOnce();
 }
