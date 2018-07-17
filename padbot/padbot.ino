@@ -6,12 +6,12 @@
 #include <std_msgs/Bool.h>
 
 // Pins
-#define L_FWD 3
-#define L_BACK 4
-#define R_FWD 6
-#define R_BACK 5
-#define L_SENSE 7
-#define R_SENSE 8
+#define L_SENSE 0
+#define R_SENSE 1
+#define L_DIR 2
+#define L_EN 4
+#define R_DIR 3
+#define R_EN 5
 
 #define FREQ 25000
 
@@ -47,26 +47,26 @@ unsigned long vel_received = 0;
 unsigned long encoder_published = 0;
 
 // Control Function
-int WheelControl(float spd, int fwd_pin, int back_pin, float fwd_Eb, float back_Eb) {
+int WheelControl(float spd, int dir_pin, int en_pin, float fwd_Eb, float back_Eb) {
   int dir = 0;
   int cmd = 0;
   if (spd > 0.05) { 
     cmd = (int) (fwd_Eb * ((spd * SPEEDTOCMD) + MIN_POWER)); 
     dir = 1; 
-    analogWrite(fwd_pin, min(abs(cmd),200)); 
-    analogWrite(back_pin, 0); 
+    analogWrite(dir_pin, LOW);
+    analogWrite(en_pin, min(abs(cmd),200)); 
   } 
   else if(spd < 0.05) { 
     cmd = (int) (back_Eb * ((spd * SPEEDTOCMD) - MIN_POWER)); 
     dir = -1; 
-    analogWrite(fwd_pin, 0); 
-    analogWrite(back_pin, min(abs(cmd),200)); 
+    analogWrite(dir_pin, HIGH);
+    analogWrite(en_pin, min(abs(cmd),200)); 
   } 
   else { 
     cmd = 0; 
     dir = 0; 
-    analogWrite(fwd_pin, 0); 
-    analogWrite(back_pin, 0); 
+    analogWrite(dir_pin, LOW);
+    analogWrite(en_pin, 0); 
   } 
   return dir;
 }
@@ -91,8 +91,8 @@ void velCB( const geometry_msgs::Twist& vel) {
   cmdLeftSpeed = leftSpeed;
   cmdRightSpeed = rightSpeed;
 
-  leftDir = WheelControl(cmdLeftSpeed, L_FWD, L_BACK, FWD_EB, BACK_EB);  
-  rightDir = WheelControl(cmdRightSpeed, R_FWD, R_BACK, 1.00, 1.00); 
+  leftDir = WheelControl(cmdLeftSpeed, L_DIR, L_EN, FWD_EB, BACK_EB);  
+  rightDir = WheelControl(cmdRightSpeed, R_DIR, R_EN, 1.00, 1.00); 
 }
 
 void resetCB( const std_msgs::Bool& b) {
@@ -117,25 +117,23 @@ ros::Subscriber<std_msgs::Bool> resetSub("padbot/reset_encoder", &resetCB );
 
 void setup() {
 	// Config
-  pinMode(L_FWD, OUTPUT);
-  pinMode(L_BACK, OUTPUT);
-  pinMode(R_FWD, OUTPUT);
-  pinMode(R_BACK, OUTPUT);
+  pinMode(L_DIR, OUTPUT);
+  pinMode(R_DIR, OUTPUT);
+  pinMode(L_EN, OUTPUT);
+  pinMode(R_EN, OUTPUT);
   pinMode(L_SENSE, INPUT_PULLUP); 
   attachInterrupt(digitalPinToInterrupt(L_SENSE), L_Encoder, CHANGE); 
   pinMode(R_SENSE, INPUT_PULLUP); 
   attachInterrupt(digitalPinToInterrupt(R_SENSE), R_Encoder, CHANGE); 
-  analogWriteFrequency(L_FWD, FREQ);
-  analogWriteFrequency(L_BACK, FREQ);
-  analogWriteFrequency(R_FWD, FREQ);
-  analogWriteFrequency(R_BACK, FREQ);
+  analogWriteFrequency(L_EN, FREQ);
+  analogWriteFrequency(R_EN, FREQ);
   delay(1000);
 	
 	// Init all pins
-	analogWrite(L_FWD, 0);
-	analogWrite(L_BACK, 0);
-	analogWrite(R_FWD, 0);
-	analogWrite(R_BACK, 0);
+	analogWrite(L_DIR, LOW);
+  analogWrite(R_DIR, LOW);
+  analogWrite(L_EN, 0);
+  analogWrite(R_EN, 0);
 	delay(1000);
   nh.initNode();
   nh.advertise(leftPub);
@@ -175,16 +173,16 @@ void loop() {
   rightSpdPub.publish(&right_speed );
   cmdLeftSpeed += KP * (leftSpeed - currentLeftSpeed);
   cmdRightSpeed += KP * (rightSpeed - currentRightSpeed);
-  leftDir = WheelControl(cmdLeftSpeed, L_FWD, L_BACK, FWD_EB, BACK_EB);  
-  rightDir = WheelControl(cmdRightSpeed, R_FWD, R_BACK, 1.00, 1.00);
+  leftDir = WheelControl(cmdLeftSpeed, L_DIR, L_EN, FWD_EB, BACK_EB);  
+  rightDir = WheelControl(cmdRightSpeed, R_DIR, R_EN, 1.00, 1.00);
   
   
   // If timeout, stop the robot
   if ( millis() - vel_received > TIMEOUT ) {
-    analogWrite(L_FWD, 0);
-    analogWrite(L_BACK, 0);
-    analogWrite(R_FWD, 0);
-    analogWrite(R_BACK, 0);
+    analogWrite(L_DIR, LOW);
+    analogWrite(R_DIR, LOW);
+    analogWrite(L_EN, 0);
+    analogWrite(R_EN, 0);
     leftDir = 0;
     rightDir = 0;
   }
