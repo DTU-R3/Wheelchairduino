@@ -53,19 +53,19 @@ int WheelControl(float spd, int dir_pin, int en_pin, float fwd_Eb, float back_Eb
   if (spd > 0.05) { 
     cmd = (int) (fwd_Eb * ((spd * SPEEDTOCMD) + MIN_POWER)); 
     dir = 1; 
-    analogWrite(dir_pin, LOW);
+    analogWrite(dir_pin, 0);
     analogWrite(en_pin, min(abs(cmd),200)); 
   } 
   else if(spd < 0.05) { 
     cmd = (int) (back_Eb * ((spd * SPEEDTOCMD) - MIN_POWER)); 
     dir = -1; 
-    analogWrite(dir_pin, HIGH);
+    analogWrite(dir_pin, 255);
     analogWrite(en_pin, min(abs(cmd),200)); 
   } 
   else { 
     cmd = 0; 
     dir = 0; 
-    analogWrite(dir_pin, LOW);
+    analogWrite(dir_pin, 0);
     analogWrite(en_pin, 0); 
   } 
   return dir;
@@ -130,8 +130,8 @@ void setup() {
   delay(1000);
 	
 	// Init all pins
-	analogWrite(L_DIR, LOW);
-  analogWrite(R_DIR, LOW);
+	analogWrite(L_DIR, 0);
+  analogWrite(R_DIR, 0);
   analogWrite(L_EN, 0);
   analogWrite(R_EN, 0);
 	delay(1000);
@@ -179,8 +179,8 @@ void loop() {
   
   // If timeout, stop the robot
   if ( millis() - vel_received > TIMEOUT ) {
-    analogWrite(L_DIR, LOW);
-    analogWrite(R_DIR, LOW);
+    analogWrite(L_DIR, 255);
+    analogWrite(R_DIR, 255);
     analogWrite(L_EN, 0);
     analogWrite(R_EN, 0);
     leftDir = 0;
