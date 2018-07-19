@@ -22,7 +22,7 @@
 #define MIN_POWER 11
 #define FWD_EB 1.05
 #define BACK_EB 1.065
-#define MAXSPEED (200.0-MIN_POWER)/SPEEDTOCMD
+#define MAXSPEED (255.0-MIN_POWER)/SPEEDTOCMD
 #define TIMEOUT 5000  // in ms
 
 // Control parameter
@@ -54,13 +54,13 @@ int WheelControl(float spd, int dir_pin, int en_pin, float fwd_Eb, float back_Eb
     cmd = (int) (fwd_Eb * ((spd * SPEEDTOCMD) + MIN_POWER)); 
     dir = 1; 
     analogWrite(dir_pin, 0);
-    analogWrite(en_pin, min(abs(cmd),200)); 
+    analogWrite(en_pin, min(abs(cmd),255)); 
   } 
   else if(spd < 0.05) { 
     cmd = (int) (back_Eb * ((spd * SPEEDTOCMD) - MIN_POWER)); 
     dir = -1; 
     analogWrite(dir_pin, 255);
-    analogWrite(en_pin, min(abs(cmd),200)); 
+    analogWrite(en_pin, min(abs(cmd),255)); 
   } 
   else { 
     cmd = 0; 
