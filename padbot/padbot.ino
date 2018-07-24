@@ -19,24 +19,23 @@
 #define WHEELBASE 0.228
 #define METERPERCOUNT 0.0000439
 #define SPEEDTOCMD 543.48
-#define MIN_POWER 11
+#define MIN_POWER 150
 #define FWD_EB 1.05
 #define BACK_EB 1.065
 #define MAXSPEED (255.0-MIN_POWER)/SPEEDTOCMD
 #define TIMEOUT 5000  // in ms
 
 // Control parameter
-#define KP 0.3
+#define KP 0.1
 
 // Variables
 ros::NodeHandle  nh;
-float leftSpeed = 0;
-float rightSpeed = 0;
-float currentLeftSpeed = 0;
-float currentRightSpeed = 0;
-float cmdLeftSpeed = 0;
-float cmdRightSpeed = 0;
-int minpower = 60;
+float leftSpeed = 0.0;
+float rightSpeed = 0.0;
+float currentLeftSpeed = 0.0;
+float currentRightSpeed = 0.0;
+float cmdLeftSpeed = 0.0;
+float cmdRightSpeed = 0.0;
 int leftCount = 0;
 int rightCount = 0;
 int lastLeftCount = 0;
@@ -50,13 +49,13 @@ unsigned long encoder_published = 0;
 int WheelControl(float spd, int dir_pin, int en_pin, float fwd_Eb, float back_Eb) {
   int dir = 0;
   int cmd = 0;
-  if (spd > 0.05) { 
+  if (spd > 0.01) { 
     cmd = (int) (fwd_Eb * ((spd * SPEEDTOCMD) + MIN_POWER)); 
     dir = 1; 
     analogWrite(dir_pin, 0);
     analogWrite(en_pin, min(abs(cmd),255)); 
   } 
-  else if(spd < 0.05) { 
+  else if(spd < -0.01) { 
     cmd = (int) (back_Eb * ((spd * SPEEDTOCMD) - MIN_POWER)); 
     dir = -1; 
     analogWrite(dir_pin, 255);
@@ -91,8 +90,8 @@ void velCB( const geometry_msgs::Twist& vel) {
   cmdLeftSpeed = leftSpeed;
   cmdRightSpeed = rightSpeed;
 
-  leftDir = WheelControl(cmdLeftSpeed, L_DIR, L_EN, FWD_EB, BACK_EB);  
-  rightDir = WheelControl(cmdRightSpeed, R_DIR, R_EN, 1.00, 1.00); 
+  // leftDir = WheelControl(cmdLeftSpeed, L_DIR, L_EN, FWD_EB, BACK_EB);  
+  // rightDir = WheelControl(cmdRightSpeed, R_DIR, R_EN, 1.00, 1.00); 
 }
 
 void resetCB( const std_msgs::Bool& b) {
@@ -176,11 +175,10 @@ void loop() {
   leftDir = WheelControl(cmdLeftSpeed, L_DIR, L_EN, FWD_EB, BACK_EB);  
   rightDir = WheelControl(cmdRightSpeed, R_DIR, R_EN, 1.00, 1.00);
   
-  
   // If timeout, stop the robot
   if ( millis() - vel_received > TIMEOUT ) {
-    analogWrite(L_DIR, 255);
-    analogWrite(R_DIR, 255);
+    analogWrite(L_DIR, 0);
+    analogWrite(R_DIR, 0);
     analogWrite(L_EN, 0);
     analogWrite(R_EN, 0);
     leftDir = 0;
